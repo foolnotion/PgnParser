@@ -18,7 +18,7 @@ struct PgnDatabase {
 };
 
 void print(std::string const& s) {
-	std::cout << s << std::endl;
+    std::cout << s << std::endl;
 }
 
 template <typename Iterator, typename Skipper>
@@ -32,33 +32,33 @@ struct PgnParser : qi::grammar<Iterator, PgnDatabase(), Skipper> {
 
         element_sequence = *(element | recursive_variation);
 
-		// comments can appear before the move number or before the move or between moves or even after
+        // comments can appear before the move number or before the move or between moves or even after
         element = -comment 
-				  >> move_no
-				  >> -comment
+                  >> move_no
+                  >> -comment
                   >> +(san_move >> -nag >> -comment);
-		          
+                  
         recursive_variation = '(' >> element_sequence >> ')';
 
         san_move = (piece_move | pawn_move | castle | null_move) >> -check >> -mate;
 
         piece_move = symbol >> (full_move_desc | partial_move_desc); 
 
-		full_move_desc = (column_id | line_id) >> -capture >> square; // example Nbd7, Nfxd5 (piece symbol not included)
-		partial_move_desc = (-capture >> square); // Nf3, Nc6, Bb5 etc (piece symbol not included)
+        full_move_desc = (column_id | line_id) >> -capture >> square; // example Nbd7, Nfxd5 (piece symbol not included)
+        partial_move_desc = (-capture >> square); // Nf3, Nc6, Bb5 etc (piece symbol not included)
 
         pawn_move = column_id >> -(capture >> column_id) >> line_id;
 
         symbol = qi::char_("KQRBNkqrbn");
         column_id = qi::char_("A-Ha-h");
         line_id = qi::char_("1-8");
-		square = column_id >> line_id;
+        square = column_id >> line_id;
         castle = qi::string("O-O") | qi::string("O-O-O");
         move_no = qi::uint_ >> '.';
         capture = qi::char_('x');
         check = qi::char_('+');
-		mate = qi::char_('#');
-		null_move = qi::string("..");
+        mate = qi::char_('#');
+        null_move = qi::string("..");
 
         game_result = qi::string("1-0")
                       | qi::string("0-1")
@@ -88,7 +88,7 @@ struct PgnParser : qi::grammar<Iterator, PgnDatabase(), Skipper> {
         pgn_game.name("pgn_game");
         movetext_section.name("movetext_section");
         element_sequence.name("element_sequence");
-		element.name("element");
+        element.name("element");
         recursive_variation.name("recursive_variation");
         move_no.name("move_number");
         san_move.name("san_move");
@@ -103,8 +103,8 @@ struct PgnParser : qi::grammar<Iterator, PgnDatabase(), Skipper> {
         symbol.name("symbol");
         nag.name("nag");
 
-		//qi::debug(comment);
-		//qi::debug(element);
+        //qi::debug(comment);
+        //qi::debug(element);
     }
 
     qi::rule<Iterator, std::string(), Skipper>
