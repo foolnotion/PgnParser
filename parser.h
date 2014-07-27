@@ -17,6 +17,10 @@ struct PgnDatabase {
     std::string str;
 };
 
+void print(std::string const& s) {
+	std::cout << s << std::endl;
+}
+
 template <typename Iterator, typename Skipper>
 struct PgnParser : qi::grammar<Iterator, PgnDatabase(), Skipper> {
     PgnParser() : PgnParser::base_type(start) {
@@ -28,24 +32,33 @@ struct PgnParser : qi::grammar<Iterator, PgnDatabase(), Skipper> {
 
         element_sequence = *(element | recursive_variation);
 
-        element = move_no
-                  >> +san_move
-                  >> -comment
-                  >> -nag;
-
+		// comments can appear before the move number or before the move or between moves or even after
+        element = -comment 
+				  >> move_no
+				  >> -comment
+                  >> +(san_move >> -nag >> -comment);
+		          
         recursive_variation = '(' >> element_sequence >> ')';
 
-        move_no = qi::uint_ >> '.';
-        symbol = qi::char_("KQRBNPkqrbnp");
-        capture = qi::char_("x");
-        column_id = +qi::char_("A-Ha-h");
-        line_id = qi::char_("1-8");
+        san_move = (piece_move | pawn_move | castle | null_move) >> -check >> -mate;
 
-        san_move = (piece_move | pawn_move | castle) >> -check;
-        piece_move = -symbol >> -capture >> column_id >> line_id; // example: Nxe4 (Knight takes on e4)
+        piece_move = symbol >> (full_move_desc | partial_move_desc); 
+
+		full_move_desc = (column_id | line_id) >> -capture >> square; // example Nbd7, Nfxd5 (piece symbol not included)
+		partial_move_desc = (-capture >> square); // Nf3, Nc6, Bb5 etc (piece symbol not included)
+
         pawn_move = column_id >> -(capture >> column_id) >> line_id;
+
+        symbol = qi::char_("KQRBNkqrbn");
+        column_id = qi::char_("A-Ha-h");
+        line_id = qi::char_("1-8");
+		square = column_id >> line_id;
         castle = qi::string("O-O") | qi::string("O-O-O");
+        move_no = qi::uint_ >> '.';
+        capture = qi::char_('x');
         check = qi::char_('+');
+		mate = qi::char_('#');
+		null_move = qi::string("..");
 
         game_result = qi::string("1-0")
                       | qi::string("0-1")
@@ -66,7 +79,7 @@ struct PgnParser : qi::grammar<Iterator, PgnDatabase(), Skipper> {
         tag_value = '"' >> text_value >> '"';
         comment = '{' >> text_value >> '}';
         text_value = qi::lexeme[*(qi::char_("A-Za-z0-9")
-                                  | qi::char_("-_/.,|\\")
+                                  | qi::char_("-_/.,|\\?!*:")
                                   | qi::space)];
 
         nag = '$' >> qi::int_;
@@ -75,6 +88,7 @@ struct PgnParser : qi::grammar<Iterator, PgnDatabase(), Skipper> {
         pgn_game.name("pgn_game");
         movetext_section.name("movetext_section");
         element_sequence.name("element_sequence");
+		element.name("element");
         recursive_variation.name("recursive_variation");
         move_no.name("move_number");
         san_move.name("san_move");
@@ -88,13 +102,16 @@ struct PgnParser : qi::grammar<Iterator, PgnDatabase(), Skipper> {
         line_id.name("line_identifier");
         symbol.name("symbol");
         nag.name("nag");
+
+		//qi::debug(comment);
+		//qi::debug(element);
     }
 
     qi::rule<Iterator, std::string(), Skipper>
             pgn_database, pgn_game, tag_section, tag_pair, tag_name, tag_value, text_value,
             comment, movetext_section, element_sequence, element, recursive_variation,
-            game_result, empty, move_no, san_move, piece_move, pawn_move, castle, check,
-            symbol, column_id, line_id, capture, nag;
+            game_result, empty, move_no, san_move, piece_move, pawn_move, castle, null_move, 
+            full_move_desc, partial_move_desc, check, mate, symbol, column_id, line_id, square, capture, nag;
 
     qi::rule<Iterator, PgnDatabase(), Skipper> start;
 
